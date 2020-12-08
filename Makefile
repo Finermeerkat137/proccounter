@@ -3,7 +3,7 @@ obj-m += proccounter.o
 CFLAGS += "-Wall"
 
 ifeq ($(APILOCATION),)
-APILOCATION := $(uname -r)
+APILOCATION := $(shell uname -r)
 endif
 
 all:
