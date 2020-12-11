@@ -8,11 +8,12 @@
 
 static unsigned long long do_execveat_count = 0;
 static unsigned long long kthread_create_count = 0;
+static unsigned long long copy_process_count = 0;
 
+static struct kprobe copy_process_probe = { .symbol_name = "copy_process", };
 static struct kprobe do_execveat_probe = { .symbol_name = "do_execveat_common", };
 static struct kprobe do_kthread_create_probe = { .symbol_name = "__kthread_create_on_node", };
 static struct proc_ops proc_entry = { .proc_read = read_proc_entry, };
-
 
 
 static ssize_t read_proc_entry(struct file* filep, char* buffer, size_t len, loff_t* offset) {
@@ -23,7 +24,7 @@ static ssize_t read_proc_entry(struct file* filep, char* buffer, size_t len, lof
         return -ENOMEM;
     }
     
-    snprintf(buf, 500, "Total Userspace Process Count: %llu\nTotal Kernel Thread Count: %llu\n", do_execveat_count, kthread_create_count);
+    snprintf(buf, 500, "Total execve() Count: %llu\nTotal Kernel Thread (kthread_create*())Count: %llu\nTotal Userspace Process (fork) Count: %llu", do_execveat_count, kthread_create_count, copy_process_count);
     ret = simple_read_from_buffer(buffer, len, offset, buf, strlen(buf));
     kvfree(buf);
     return ret;
@@ -54,7 +55,13 @@ static int do_kthread_create_pre(struct kprobe* kp, struct pt_regs* regs) {
     return 0;
 }
 
+static int copy_process_pre(struct kprobe* kp, struct pt_regs* regs) {
+    copy_process_count++;
+    return 0;
+}
+
 static void remove_kprobes(void) {
+    unregister_kprobe(&copy_process_probe);
     unregister_kprobe(&do_execveat_probe);
     unregister_kprobe(&do_kthread_create_probe);
 }
@@ -80,6 +87,16 @@ static int init_kprobes(void) {
     if (ret) {
         remove_kprobes();
         return ret;
+    }
+
+    copy_process_probe.pre_handler = copy_process_pre;
+    copy_process_probe.post_handler = NULL;
+    copy_process_probe.fault_handler = NULL;
+
+    ret = register_kprobe(&copy_process_probe);
+    if (ret) {
+	remove_kprobes();
+	return ret;
     }
 
     return ret;
