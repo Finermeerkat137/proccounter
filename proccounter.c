@@ -24,7 +24,7 @@ static ssize_t read_proc_entry(struct file* filep, char* buffer, size_t len, lof
         return -ENOMEM;
     }
     
-    snprintf(buf, 500, "Total execve() Count: %llu\nTotal Kernel Thread (kthread_create*())Count: %llu\nTotal Userspace Process (fork) Count: %llu", do_execveat_count, kthread_create_count, copy_process_count);
+    snprintf(buf, 500, "Total execve() Count: %llu\nTotal kthread_create() Count: %llu\nTotal fork() Count: %llu\n", do_execveat_count, kthread_create_count, copy_process_count);
     ret = simple_read_from_buffer(buffer, len, offset, buf, strlen(buf));
     kvfree(buf);
     return ret;
